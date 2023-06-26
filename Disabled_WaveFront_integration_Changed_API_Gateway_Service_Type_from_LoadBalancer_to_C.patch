@@ -1,0 +1,193 @@
+Subject: [PATCH] Disabled WaveFront integration; Changed API Gateway Service Type from LoadBalancer to ClusterIP
+---
+Index: k8s/init-services/04-wavefront.yaml
+===================================================================
+diff --git a/k8s/init-services/04-wavefront.yaml b/k8s/init-services/04-wavefront.yaml
+deleted file mode 100644
+--- a/k8s/init-services/04-wavefront.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ /dev/null	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
+@@ -1,66 +0,0 @@
+-# Need to change YOUR_CLUSTER and YOUR_API_TOKEN accordingly
+-
+-apiVersion: apps/v1
+-kind: Deployment
+-metadata:
+-  labels:
+-    app: wavefront-proxy
+-    name: wavefront-proxy
+-  name: wavefront-proxy
+-  namespace: spring-petclinic
+-spec:
+-  replicas: 1
+-  selector:
+-    matchLabels:
+-      app: wavefront-proxy
+-  template:
+-    metadata:
+-      labels:
+-        app: wavefront-proxy
+-    spec:
+-      containers:
+-      - name: wavefront-proxy
+-        image: wavefronthq/proxy:latest
+-        imagePullPolicy: Always
+-        env:
+-        - name: WAVEFRONT_URL
+-          valueFrom:
+-             secretKeyRef:
+-               name: wavefront
+-               key: wavefront-url
+-        - name: WAVEFRONT_TOKEN
+-          valueFrom:
+-             secretKeyRef:
+-               name: wavefront
+-               key: wavefront-api-token
+-        # Uncomment the below lines to consume Zipkin/Istio traces
+-        - name: WAVEFRONT_PROXY_ARGS
+-          value: --traceZipkinListenerPorts 9411 --traceZipkinApplicationName spring-petclinic-k8s
+-        ports:
+-        - containerPort: 2878
+-          protocol: TCP
+-        # Uncomment the below lines to consume Zipkin/Istio traces
+-        - containerPort: 9411
+-          protocol: TCP
+-        securityContext:
+-          privileged: false
+----
+-apiVersion: v1
+-kind: Service
+-metadata:
+-  name: wavefront-proxy
+-  labels:
+-    app: wavefront-proxy
+-  namespace: spring-petclinic
+-spec:
+-  ports:
+-  - name: wavefront
+-    port: 2878
+-    protocol: TCP
+-  # Uncomment the below lines to consume Zipkin/Istio traces
+-  - name: http
+-    port: 9411
+-    targetPort: 9411
+-    protocol: TCP
+-  selector:
+-    app: wavefront-proxy
+Index: k8s/api-gateway-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/k8s/api-gateway-deployment.yaml b/k8s/api-gateway-deployment.yaml
+--- a/k8s/api-gateway-deployment.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ b/k8s/api-gateway-deployment.yaml	(date 1687512570696)
+@@ -45,8 +45,6 @@
+         env:
+         - name: SPRING_PROFILES_ACTIVE
+           value: kubernetes
+-        - name: MANAGEMENT_METRICS_EXPORT_WAVEFRONT_URI
+-          value: proxy://wavefront-proxy.spring-petclinic.svc.cluster.local:2878
+         ports:
+         - containerPort: 8080
+       restartPolicy: Always
+Index: k8s/customers-service-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/k8s/customers-service-deployment.yaml b/k8s/customers-service-deployment.yaml
+--- a/k8s/customers-service-deployment.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ b/k8s/customers-service-deployment.yaml	(date 1687512749759)
+@@ -55,10 +55,7 @@
+              secretKeyRef:
+                name: customers-db-mysql
+                key: mysql-root-password
+-        - name: MANAGEMENT_METRICS_EXPORT_WAVEFRONT_URI
+-          value: proxy://wavefront-proxy.spring-petclinic.svc.cluster.local:2878
+         ports:
+         - containerPort: 8080
+-        resources: {}
+       restartPolicy: Always
+ status: {}
+Index: k8s/vets-service-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/k8s/vets-service-deployment.yaml b/k8s/vets-service-deployment.yaml
+--- a/k8s/vets-service-deployment.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ b/k8s/vets-service-deployment.yaml	(date 1687512585440)
+@@ -54,10 +54,7 @@
+              secretKeyRef:
+                name: vets-db-mysql
+                key: mysql-root-password
+-        - name: MANAGEMENT_METRICS_EXPORT_WAVEFRONT_URI
+-          value: proxy://wavefront-proxy.spring-petclinic.svc.cluster.local:2878
+         ports:
+         - containerPort: 8080
+-        resources: {}
+       restartPolicy: Always
+ status: {}
+Index: k8s/visits-service-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/k8s/visits-service-deployment.yaml b/k8s/visits-service-deployment.yaml
+--- a/k8s/visits-service-deployment.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ b/k8s/visits-service-deployment.yaml	(date 1687512597292)
+@@ -54,10 +54,7 @@
+              secretKeyRef:
+                name: visits-db-mysql
+                key: mysql-root-password
+-        - name: MANAGEMENT_METRICS_EXPORT_WAVEFRONT_URI
+-          value: proxy://wavefront-proxy.spring-petclinic.svc.cluster.local:2878
+         ports:
+         - containerPort: 8080
+-        resources: {}
+       restartPolicy: Always
+ status: {}
+Index: k8s/init-services/05-api-gateway-service.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/k8s/init-services/05-api-gateway-service.yaml b/k8s/init-services/05-api-gateway-service.yaml
+--- a/k8s/init-services/05-api-gateway-service.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ b/k8s/init-services/05-api-gateway-service.yaml	(date 1687512416412)
+@@ -13,6 +13,5 @@
+     targetPort: 8080
+   selector:
+     app: api-gateway
+-  type: LoadBalancer
+ status:
+   loadBalancer: {}
+Index: k8s/init-services/02-config-map.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/k8s/init-services/02-config-map.yaml b/k8s/init-services/02-config-map.yaml
+--- a/k8s/init-services/02-config-map.yaml	(revision ab8476cbc1e23f8f2a415e31fa69d26ca23e4704)
++++ b/k8s/init-services/02-config-map.yaml	(date 1687511667914)
+@@ -16,11 +16,6 @@
+         mime-types: application/json,text/css,application/javascript
+         min-response-size: 2048
+ 
+-    wavefront:
+-      application:
+-        name: spring-petclinic-k8s
+-      freemium-account: true
+-
+     # Logging
+     logging.level.org.springframework: INFO
+ 
+@@ -50,7 +45,7 @@
+           prometheus:
+             enabled: true
+           wavefront:
+-            enabled: true
++            enabled: false
+ 
+     customers-service-id: http://customers-service.spring-petclinic.svc.cluster.local:8080
+     visits-service-id: http://vists-service.spring-petclinic.svc.cluster.local:8080
